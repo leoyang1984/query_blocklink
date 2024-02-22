@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Link Counter</title>
+<style>
+    body {
+        background-color: #002b36;
+        color: #f8ca00;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+    }
+    .bar-chart-container {
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        background: #004d40;
+        border-radius: 5px;
+        padding: 10px;
+        margin-top: 20px;
+        position: relative; /* Allows absolute positioning inside */
+        height: 500px; /* Fixed height for the container */
+    }
+    .bar {
+        width: 40px; /* Fixed width for bars */
+        background-color: #007bff;
+        border-radius: 5px;
+        margin-right: 10px;
+        position: absolute; /* Absolute position within the container */
+        bottom: 0; /* Align to the bottom of the container */
+    }
+    .bar:hover {
+        background-color: #0056b3;
+    }
+    .bar-label {
+        position: absolute; /* Position the label at the bottom */
+        bottom: -20px;
+        white-space: nowrap;
+    }
+    .bar-count {
+        color: #002b36;
+        font-weight: bold;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        border: 1px solid #ffffff;
+        padding: 8px;
+        text-align: left;
+        color: #f8ca00;
+    }
+    tr:nth-child(even) {
+        background-color: #004d40;
+    }
+    tr:nth-child(odd) {
+        background-color: #002b36;
+    }
+</style>
+</head>
+<body>
+    <input type="file" multiple onchange="selectFiles(this.files)">
+    <button onclick="handleFiles()">Count Links</button>
+    <div id="output"></div>
+    <div class="bar-chart-container" id="barChart"></div>
+<script>
+let selectedFiles = [];
+let titlesCount = {};
+let titleIdMap = {}; // Map to hold title to ID mapping
+
+function selectFiles(files) {
+    selectedFiles = files;
+}
+
+function handleFiles() {
+    titlesCount = {};
+    titleIdMap = {};
+    let currentId = 1; // Start ID numbering from 1
+    Array.from(selectedFiles).forEach(file => {
+        if (file.type === 'text/markdown' || file.name.endsWith('.md')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const titles = content.match(/\(\((.*?)\)\)/g);
+                if (titles) {
+                    titles.forEach(title => {
+                        const cleanTitle = title.slice(2, -2);
+                        if (!titleIdMap[cleanTitle]) {
+                            titleIdMap[cleanTitle] = currentId++; // Assign an ID if not already assigned
+                        }
+                        titlesCount[cleanTitle] = (titlesCount[cleanTitle] || 0) + 1;
+                    });
+                }
+                displayResults(titlesCount);
+                displayBarChart(titlesCount);
+            };
+            reader.readAsText(file);
+        }
+    });
+}
+
+function displayResults(titlesCount) {
+    const output = document.getElementById('output');
+    output.innerHTML = '<table><tr><th>ID</th><th>Title</th><th>Count</th></tr>' +
+        Object.entries(titlesCount).map(([title, count]) => 
+            `<tr><td>${titleIdMap[title]}</td><td>((${title}))</td><td>${count}</td></tr>`).join('') +
+        '</table>';
+}
+
+function displayBarChart(titlesCount) {
+    const maxCount = Math.max(...Object.values(titlesCount));
+    const barChartContainerHeight = 500; // Set a fixed height for the bar chart container
+    const barChart = document.getElementById('barChart');
+    barChart.style.height = `${barChartContainerHeight}px`; // Set the container height
+    barChart.innerHTML = '';
+    let leftOffset = 0; // Start positioning bars at the beginning of the container
+    Object.entries(titlesCount).forEach(([title, count], index) => {
+        const barHeight = (count / maxCount) * barChartContainerHeight; // Calculate bar height as a proportion of max count
+        const bar = document.createElement('div');
+        bar.classList.add('bar');
+        bar.style.height = `${barHeight}px`; // Set the bar height
+        bar.style.left = `${leftOffset}px`; // Set the left offset for the bar
+        leftOffset += 50; // Increment the left offset for the next bar
+        const label = document.createElement('div');
+        label.classList.add('bar-label');
+        label.textContent = `ID ${titleIdMap[title]}`;
+        const countDisplay = document.createElement('div');
+        countDisplay.classList.add('bar-count');
+        countDisplay.textContent = count;
+        bar.appendChild(countDisplay);
+        bar.appendChild(label);
+        barChart.appendChild(bar);
+    });
+}
+</script>
+</body>
+</html>

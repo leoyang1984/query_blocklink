@@ -19,22 +19,22 @@
         border-radius: 5px;
         padding: 10px;
         margin-top: 20px;
-        position: relative; /* Allows absolute positioning inside */
-        height: 500px; /* Fixed height for the container */
+        position: relative;
+        height: 500px;
     }
     .bar {
-        width: 40px; /* Fixed width for bars */
+        width: 40px;
         background-color: #007bff;
         border-radius: 5px;
         margin-right: 10px;
-        position: absolute; /* Absolute position within the container */
-        bottom: 0; /* Align to the bottom of the container */
+        position: absolute;
+        bottom: 0;
     }
     .bar:hover {
         background-color: #0056b3;
     }
     .bar-label {
-        position: absolute; /* Position the label at the bottom */
+        position: absolute;
         bottom: -20px;
         white-space: nowrap;
     }
@@ -62,14 +62,15 @@
 </style>
 </head>
 <body>
-    <input type="file" multiple onchange="selectFiles(this.files)">
+    <input type="file" id="fileInput" multiple onchange="selectFiles(this.files)">
     <button onclick="handleFiles()">Count Links</button>
+    <button onclick="clearFiles()">Clear Selection</button>
     <div id="output"></div>
     <div class="bar-chart-container" id="barChart"></div>
 <script>
 let selectedFiles = [];
 let titlesCount = {};
-let titleIdMap = {}; // Map to hold title to ID mapping
+let titleIdMap = {};
 
 function selectFiles(files) {
     selectedFiles = files;
@@ -78,25 +79,29 @@ function selectFiles(files) {
 function handleFiles() {
     titlesCount = {};
     titleIdMap = {};
-    let currentId = 1; // Start ID numbering from 1
-    Array.from(selectedFiles).forEach(file => {
+    let currentId = 1;
+    Array.from(selectedFiles).forEach((file, index) => {
         if (file.type === 'text/markdown' || file.name.endsWith('.md')) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const titles = content.match(/\(\((.*?)\)\)/g);
-                if (titles) {
-                    titles.forEach(title => {
-                        const cleanTitle = title.slice(2, -2);
-                        if (!titleIdMap[cleanTitle]) {
-                            titleIdMap[cleanTitle] = currentId++; // Assign an ID if not already assigned
-                        }
-                        titlesCount[cleanTitle] = (titlesCount[cleanTitle] || 0) + 1;
-                    });
-                }
-                displayResults(titlesCount);
-                displayBarChart(titlesCount);
-            };
+            reader.onload = (function(file, index) {
+                return function(e) {
+                    const content = e.target.result;
+                    const titles = content.match(/\(\((.*?)\)\)/g);
+                    if (titles) {
+                        titles.forEach(title => {
+                            const cleanTitle = title.slice(2, -2);
+                            if (!titleIdMap[cleanTitle]) {
+                                titleIdMap[cleanTitle] = currentId++;
+                            }
+                            titlesCount[cleanTitle] = (titlesCount[cleanTitle] || 0) + 1;
+                        });
+                    }
+                    if (index === selectedFiles.length - 1) {
+                        displayResults(titlesCount);
+                        displayBarChart(titlesCount);
+                    }
+                };
+            })(file, index);
             reader.readAsText(file);
         }
     });
@@ -112,18 +117,18 @@ function displayResults(titlesCount) {
 
 function displayBarChart(titlesCount) {
     const maxCount = Math.max(...Object.values(titlesCount));
-    const barChartContainerHeight = 500; // Set a fixed height for the bar chart container
+    const barChartContainerHeight = 500;
     const barChart = document.getElementById('barChart');
-    barChart.style.height = `${barChartContainerHeight}px`; // Set the container height
+    barChart.style.height = `${barChartContainerHeight}px`;
     barChart.innerHTML = '';
-    let leftOffset = 0; // Start positioning bars at the beginning of the container
+    let leftOffset = 0;
     Object.entries(titlesCount).forEach(([title, count], index) => {
-        const barHeight = (count / maxCount) * barChartContainerHeight; // Calculate bar height as a proportion of max count
+        const barHeight = (count / maxCount) * barChartContainerHeight;
         const bar = document.createElement('div');
         bar.classList.add('bar');
-        bar.style.height = `${barHeight}px`; // Set the bar height
-        bar.style.left = `${leftOffset}px`; // Set the left offset for the bar
-        leftOffset += 50; // Increment the left offset for the next bar
+        bar.style.height = `${barHeight}px`;
+        bar.style.left = `${leftOffset}px`;
+        leftOffset += 50;
         const label = document.createElement('div');
         label.classList.add('bar-label');
         label.textContent = `ID ${titleIdMap[title]}`;
@@ -134,6 +139,13 @@ function displayBarChart(titlesCount) {
         bar.appendChild(label);
         barChart.appendChild(bar);
     });
+}
+
+function clearFiles() {
+    document.getElementById('fileInput').value = '';
+    selectedFiles = [];
+    document.getElementById('output').innerHTML = '';
+    document.getElementById('barChart').innerHTML = '';
 }
 </script>
 </body>
